@@ -27,26 +27,8 @@ def downloadTop100(top100Url, destinationFolder):
     except urllib2.URLError as e:
         print("Failed to download from " + adUrl + ":" + e.reason)
 
-def parseEbookCategories(html):
-    try:
-
-        # Must use the lxml HTML parser even though it has external dependecies, because the default python one is not good enough to parse the Kijiji pages
-        # lxml Windows distribution was downloaded from http://www.lfd.uci.edu/~gohlke/pythonlibs/#lxml
-        soup = BeautifulSoup(html, "lxml") 
-
-        categories = ''
-        for allKindleEbooksLink in soup.body.find_all('a', href = re.compile('/ebooks-kindle/.*')):
-            nextTag = allKindleEbooksLink.findNext()
-            if nextTag.name == 'a':
-                categories += nextTag.text + "\t"
-            
-        return categories
-        
-    except urllib2.URLError as e:
-        print("Failed to download from " + ebookUrl + ":" + e.reason)
-        
                 
-def getTop100Info(resultsPageUrl, pageIndex, destinationFolder, csvFile):
+def getTop100Info(resultsPageUrl, pageIndex, destinationFolder):
     try:
         response = urllib2.urlopen(resultsPageUrl + str(pageIndex))
         html = response.read()
@@ -62,41 +44,22 @@ def getTop100Info(resultsPageUrl, pageIndex, destinationFolder, csvFile):
             os.makedirs(ebooksDestinationFolder)
 
         
-        # Must use the lxml HTML parser even though it has external dependecies, because the default python one is not good enough to parse the Kijiji pages
+        # Must use the lxml HTML r even though it has external dependecies, because the default python one is not good enough to  the Kijiji pages
         # lxml Windows distribution was downloaded from http://www.lfd.uci.edu/~gohlke/pythonlibs/#lxml
         soup = BeautifulSoup(html, "lxml") 
     
         #Extract details of each book in the top 100
         for bookDiv in soup.body.find_all('div', {'class', 'zg_itemImmersion'}):
-            rank = int(bookDiv.div.span.text.rstrip('.'))
             itemWrapper = bookDiv.find('div', {'class', 'zg_itemWrapper'})
-            daysInTop100 = int(itemWrapper.find('div', {'class', 'zg_rankLine'}).text.split(' ', 1)[0])
-            title = itemWrapper.find('div', {'class', 'zg_title'}).text.strip(' ')
-            author = itemWrapper.find('div', {'class', 'zg_byline'}).text.strip()[3:]
             ebookUrl = itemWrapper.find('div', {'class', 'zg_itemImageImmersion'}).a['href'].strip()
             asin = ebookUrl[-10:]
-            avgStarsTag = ''
-            rating = ''
-            nbReviews = ''
-            if itemWrapper is not None:
-                zgReviewsTag = itemWrapper.find('div', {'class', 'zg_reviews'})
-                if zgReviewsTag is not None: 
-                    avgStarsTag = zgReviewsTag.find('span', {'class', 'crAvgStars'})
-                    rating = float(avgStarsTag.text.split(' ', 1)[0])
-                    nbReviews = int(avgStarsTag.find_all('a')[2].text)
-            price = float(itemWrapper.find('div', {'class', 'zg_itemPriceBlock_compact'}).text.split(' ')[2].replace(',', '.'))
             response = urllib2.urlopen(ebookUrl)
             ebookHtml = response.read()
             ebookFileName = os.path.join(ebooksDestinationFolder, asin + ".html")
             ebookFile = open(ebookFileName, "w")
             ebookFile.write(ebookHtml)
             ebookFile.close()
-
-            categories = parseEbookCategories(ebookHtml)
-            line = str(rank)  + '\t' + str(daysInTop100) + '\t' + str(rating) + '\t' + str(nbReviews) + '\t' + str(price) + '\t' + title + '\t' + asin + '\t' + author + '\t' + ebookUrl + '\t' + categories
-            print(line)
-            csvFile.write(line + "\r\n")
-            csvFile.flush()
+            print(asin)
             
     except urllib2.URLError as e:
         print("Failed to download from " + resultsPageUrl + ":" + e.reason)
@@ -106,19 +69,13 @@ def main():
     if not os.path.exists(destinationFolder): 
         os.makedirs(destinationFolder)
 
-    csvFileName = os.path.join(destinationFolder, "top100.csv")
-    
-    csvFile = codecs.open(csvFileName, "w", "latin-1")
-    print("Rank\tDaysInTop100\tRating\tNbReviews\tPrice\tTitle\tASIN\tAuthor\tURL")
-    csvFile.write("Rank\tDaysInTop100\tRating\tNbReviews\tPrice\tTitle\tASIN\tAuthor\tURL\r\n")
+    print("ASIN")
     
     #bestSellersPage = 'http://www.amazon.fr/gp/bestsellers/digital-text/695398031#3';
 
     bestSellersPage = 'http://www.amazon.fr/gp/bestsellers/digital-text/695398031/ref=zg_bs_695398031_pg_2/276-1310913-3876205?ie=UTF8&pg='
     for i in range(1, 6):
-        getTop100Info(bestSellersPage, i, destinationFolder, csvFile)
+        getTop100Info(bestSellersPage, i, destinationFolder)
         
-    csvFile.close()
-    
 if __name__ == "__main__":
     main()
