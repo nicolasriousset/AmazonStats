@@ -76,6 +76,8 @@ def main():
     bestSellersPage = 'http://www.amazon.fr/gp/bestsellers/digital-text/695398031/ref=zg_bs_695398031_pg_2/276-1310913-3876205?ie=UTF8&pg='
     for i in range(1, 6):
         getTop100Info(bestSellersPage, i, destinationFolder)
+
+    print("Done !")
         
 if __name__ == "__main__":
     main()

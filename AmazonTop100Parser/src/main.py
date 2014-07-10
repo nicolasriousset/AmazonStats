@@ -39,7 +39,8 @@ def parseEbookCategories(html):
     return categories
         
 
-def parseTop100HtmlFile(top100HtmlFileName, csvFile):
+def parseTop100HtmlFile(top100HtmlFileName):
+    result = []
     
     top100HtmlFile = open(top100HtmlFileName, "r")
     html = top100HtmlFile.read()
@@ -54,43 +55,46 @@ def parseTop100HtmlFile(top100HtmlFileName, csvFile):
 
     #Extract details of each book in the top 100
     for bookDiv in soup.body.find_all('div', {'class', 'zg_itemImmersion'}):
-        rank = int(bookDiv.div.span.text.rstrip('.'))
+        ebook = Amazon.Ebook()
+        ebook.rank = int(bookDiv.div.span.text.rstrip('.'))
         itemWrapper = bookDiv.find('div', {'class', 'zg_itemWrapper'})
-        daysInTop100 = int(itemWrapper.find('div', {'class', 'zg_rankLine'}).text.split(' ', 1)[0])
-        title = itemWrapper.find('div', {'class', 'zg_title'}).text.strip(' ')
-        author = itemWrapper.find('div', {'class', 'zg_byline'}).text.strip()[3:]
-        ebookUrl = itemWrapper.find('div', {'class', 'zg_itemImageImmersion'}).a['href'].strip()
-        asin = ebookUrl[-10:]
-        avgStarsTag = ''
-        rating = ''
-        nbReviews = ''
+        ebook.daysInTop100 = int(itemWrapper.find('div', {'class', 'zg_rankLine'}).text.split(' ', 1)[0])
+        ebook.title = itemWrapper.find('div', {'class', 'zg_title'}).text.strip(' ')
+        ebook.author = itemWrapper.find('div', {'class', 'zg_byline'}).text.strip()[3:]
+        ebook.ebookUrl = itemWrapper.find('div', {'class', 'zg_itemImageImmersion'}).a['href'].strip()
+        ebook.asin = ebook.ebookUrl[-10:]
+        ebook.avgStarsTag = ''
+        ebook.rating = ''
+        ebook.nbReviews = ''
         if itemWrapper is not None:
             zgReviewsTag = itemWrapper.find('div', {'class', 'zg_reviews'})
             if zgReviewsTag is not None: 
                 avgStarsTag = zgReviewsTag.find('span', {'class', 'crAvgStars'})
-                rating = float(avgStarsTag.text.split(' ', 1)[0])
-                nbReviews = int(avgStarsTag.find_all('a')[2].text)
-        price = float(itemWrapper.find('div', {'class', 'zg_itemPriceBlock_compact'}).text.split(' ')[2].replace(',', '.'))
+                ebook.rating = float(avgStarsTag.text.split(' ', 1)[0])
+                ebook.nbReviews = int(avgStarsTag.find_all('a')[2].text)
+        ebook.price = float(itemWrapper.find('div', {'class', 'zg_itemPriceBlock_compact'}).text.split(' ')[2].replace(',', '.'))
 
-        ebookFileName = os.path.join(ebooksRepositoryFolder, asin + ".html")
+        ebookFileName = os.path.join(ebooksRepositoryFolder, ebook.asin + ".html")
         ebookFile = open(ebookFileName, "r")
         ebookHtml = ebookFile.read()
         ebookFile.close()
 
-        categories = parseEbookCategories(ebookHtml)
-        line = str(rank)  + '\t' + str(daysInTop100) + '\t' + str(rating) + '\t' + str(nbReviews) + '\t' + str(price) + '\t' + title + '\t' + asin + '\t' + author + '\t' + ebookUrl + '\t' + categories
-        print(line)
-        csvFile.write(line + "\r\n")
-        csvFile.flush()
+        ebook.categories = parseEbookCategories(ebookHtml)
+        print(ebook.__repr__())
+        result.append(ebook)
+        
+    return result
             
 
-def analyzeFolder(folder, csvFile):
+def analyzeTop100Folder(folder):
     print("Analyzing folder " + folder)
+    result = []
     folder = os.path.normpath(folder)
     for f in os.listdir(folder):
         fileextension = os.path.splitext(f)[1]
         if fileextension == ".html":
-            parseTop100HtmlFile(os.path.join(folder, f), csvFile)
+            result.append(parseTop100HtmlFile(os.path.join(folder, f)))
+    return result
     
 def main():
     if len(sys.argv) <= 2:
@@ -122,7 +126,10 @@ def main():
     ebook.URL = "URL"
     csvFile.write(ebook.__repr__())
     
-    analyzeFolder(top100Folder, csvFile)
+    top100bestsellers = analyzeTop100Folder(top100Folder)
+    for ebook in top100bestsellers:
+        print ebook.__repr__()        
+        csvFile.write(ebook.__repr__)
     
 if __name__ == "__main__":
     main()
