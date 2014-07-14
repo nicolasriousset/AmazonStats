@@ -61,8 +61,8 @@ def parseTop100HtmlFile(top100HtmlFileName):
         ebook.daysInTop100 = int(itemWrapper.find('div', {'class', 'zg_rankLine'}).text.split(' ', 1)[0])
         ebook.title = itemWrapper.find('div', {'class', 'zg_title'}).text.strip(' ')
         ebook.author = itemWrapper.find('div', {'class', 'zg_byline'}).text.strip()[3:]
-        ebook.ebookUrl = itemWrapper.find('div', {'class', 'zg_itemImageImmersion'}).a['href'].strip()
-        ebook.asin = ebook.ebookUrl[-10:]
+        ebook.URL = itemWrapper.find('div', {'class', 'zg_itemImageImmersion'}).a['href'].strip()
+        ebook.ASIN = ebook.URL[-10:]
         ebook.avgStarsTag = ''
         ebook.rating = ''
         ebook.nbReviews = ''
@@ -74,13 +74,12 @@ def parseTop100HtmlFile(top100HtmlFileName):
                 ebook.nbReviews = int(avgStarsTag.find_all('a')[2].text)
         ebook.price = float(itemWrapper.find('div', {'class', 'zg_itemPriceBlock_compact'}).text.split(' ')[2].replace(',', '.'))
 
-        ebookFileName = os.path.join(ebooksRepositoryFolder, ebook.asin + ".html")
+        ebookFileName = os.path.join(ebooksRepositoryFolder, ebook.ASIN + ".html")
         ebookFile = open(ebookFileName, "r")
         ebookHtml = ebookFile.read()
         ebookFile.close()
 
         ebook.categories = parseEbookCategories(ebookHtml)
-        print(ebook.__repr__())
         result.append(ebook)
         
     return result
@@ -93,7 +92,7 @@ def analyzeTop100Folder(folder):
     for f in os.listdir(folder):
         fileextension = os.path.splitext(f)[1]
         if fileextension == ".html":
-            result.append(parseTop100HtmlFile(os.path.join(folder, f)))
+            result.extend(parseTop100HtmlFile(os.path.join(folder, f)))
     return result
     
 def main():
@@ -126,10 +125,42 @@ def main():
     ebook.URL = "URL"
     csvFile.write(ebook.__repr__())
     
-    top100bestsellers = analyzeTop100Folder(top100Folder)
-    for ebook in top100bestsellers:
-        print ebook.__repr__()        
-        csvFile.write(ebook.__repr__)
+    bestsellers = analyzeTop100Folder(top100Folder)
+    for ebook in bestsellers:
+        csvFile.write(ebook.__repr__())
+
+    bestSellersCount = len(bestsellers)
+    bestsellersCountHalf = bestSellersCount / 2
+    
+    bestsellers.sort(cmp=None, key=lambda ebook : ebook.price, reverse=False)
+    avgPrice = sum(ebook.price for ebook in bestsellers) / bestSellersCount
+    medianPrice = bestsellers[(bestSellersCount + 1)/2].price        
+    print "Average price = €" + avgPrice.__str__()
+    print "Median price = €" + medianPrice.__str__()
+
+    bestsellers.sort(cmp=None, key=lambda ebook : ebook.daysInTop100, reverse=False)
+    avgDaysInTop100 = sum(ebook.daysInTop100 for ebook in bestsellers) / bestSellersCount
+    medianDaysInTop100 = bestsellers[(bestSellersCount + 1)/2].daysInTop100        
+    print "Average days in top 100 = " + avgDaysInTop100.__str__()
+    print "Median days in top 100 = " + medianDaysInTop100.__str__()
+
+    avgPrice = sum(ebook.price for ebook in bestsellers[:bestsellersCountHalf]) / bestsellersCountHalf
+    print "Average price of the 50 youngest ebooks = €" + avgPrice.__str__()
+    avgPrice = sum(ebook.price for ebook in bestsellers[bestsellersCountHalf:]) / bestsellersCountHalf
+    print "Average price of the 50 oldest ebooks = €" + avgPrice.__str__()
+
+    bestsellers.sort(cmp=None, key=lambda ebook : ebook.rank, reverse=False)
+    avgDaysInTop100 = sum(ebook.daysInTop100 for ebook in bestsellers[:bestsellersCountHalf]) / bestsellersCountHalf
+    print "Average days in top 100 of the 50 highest ranked= " + avgDaysInTop100.__str__()
+    avgDaysInTop100 = sum(ebook.daysInTop100 for ebook in bestsellers[bestsellersCountHalf:]) / bestsellersCountHalf
+    print "Average days in top 100 of the 50 lowest ranked= " + avgDaysInTop100.__str__()
+    
+    avgPrice = sum(ebook.price for ebook in bestsellers[:bestsellersCountHalf]) / bestsellersCountHalf
+    print "Average price of the 50 highest ranked ebooks = €" + avgPrice.__str__()
+    avgPrice = sum(ebook.price for ebook in bestsellers[bestsellersCountHalf:]) / bestsellersCountHalf
+    print "Average price of the 50 lowest ranked ebooks = €" + avgPrice.__str__()
+        
+    csvFile.close()
     
 if __name__ == "__main__":
     main()
