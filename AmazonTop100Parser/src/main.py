@@ -111,9 +111,19 @@ def main():
     ebook.URL = "URL"
     csvFile.write(ebook.__repr__())
     
+    bestsellersCountPerCategory = dict()
     bestsellers = analyzeTop100Folder(top100Folder)
     for ebook in bestsellers:
         csvFile.write(ebook.__repr__())
+        for category in ebook.categories:
+            if category in bestsellersCountPerCategory:
+                bestsellersCountPerCategory[category] = bestsellersCountPerCategory[category] + 1 
+            else:
+                bestsellersCountPerCategory[category] = 1
+
+    print("Bestsellers count per category :")                
+    for category in bestsellersCountPerCategory:
+        print(" - " + category + " = " + bestsellersCountPerCategory[category].__str__())
 
     bestsellersCount = len(bestsellers)
     bestsellersCountHalf = bestsellersCount / 2
