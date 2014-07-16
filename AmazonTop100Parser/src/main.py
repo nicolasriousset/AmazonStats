@@ -11,30 +11,16 @@ import codecs
 def displayHelp():
     print("usage : " + os.path.basename(sys.argv[0]) + " <Amazon top 100 folder> <destination CSV file>")
 
-def parseEbookDescriptionHtmlFile(ebookDescriptionHtmlFile):
-    print("Parsing " + ebookDescriptionHtmlFile)
-    f = open(ebookDescriptionHtmlFile,"r")
-    html = f.read()
-    
-    # Must use the lxml HTML parser even though it has external dependecies, because the default python one is not good enough to parse the Kijiji pages
-    # lxml Windows distribution was downloaded from http://www.lfd.uci.edu/~gohlke/pythonlibs/#lxml
-    soup = BeautifulSoup(html, "lxml")
-    
-    ebook = Amazon.Ebook() 
-
-    print(ebook)
-    return ebook
-
 def parseEbookCategories(html):
     # Must use the lxml HTML parser even though it has external dependecies, because the default python one is not good enough to parse the Kijiji pages
     # lxml Windows distribution was downloaded from http://www.lfd.uci.edu/~gohlke/pythonlibs/#lxml
     soup = BeautifulSoup(html, "lxml") 
 
-    categories = ''
+    categories = []
     for allKindleEbooksLink in soup.body.find_all('a', href = re.compile('/ebooks-kindle/.*')):
         nextTag = allKindleEbooksLink.findNext()
         if nextTag.name == 'a':
-            categories += nextTag.text + "\t"
+            categories.append(nextTag.text)
         
     return categories
         
@@ -75,7 +61,7 @@ def parseTop100HtmlFile(top100HtmlFileName):
         ebook.price = float(itemWrapper.find('div', {'class', 'zg_itemPriceBlock_compact'}).text.split(' ')[2].replace(',', '.'))
 
         ebookFileName = os.path.join(ebooksRepositoryFolder, ebook.ASIN + ".html")
-        ebookFile = open(ebookFileName, "r")
+        ebookFile = open(ebookFileName, "rb")
         ebookHtml = ebookFile.read()
         ebookFile.close()
 
@@ -129,26 +115,9 @@ def main():
     for ebook in bestsellers:
         csvFile.write(ebook.__repr__())
 
-    bestSellersCount = len(bestsellers)
-    bestsellersCountHalf = bestSellersCount / 2
+    bestsellersCount = len(bestsellers)
+    bestsellersCountHalf = bestsellersCount / 2
     
-    bestsellers.sort(cmp=None, key=lambda ebook : ebook.price, reverse=False)
-    avgPrice = sum(ebook.price for ebook in bestsellers) / bestSellersCount
-    medianPrice = bestsellers[(bestSellersCount + 1)/2].price        
-    print "Average price = €" + avgPrice.__str__()
-    print "Median price = €" + medianPrice.__str__()
-
-    bestsellers.sort(cmp=None, key=lambda ebook : ebook.daysInTop100, reverse=False)
-    avgDaysInTop100 = sum(ebook.daysInTop100 for ebook in bestsellers) / bestSellersCount
-    medianDaysInTop100 = bestsellers[(bestSellersCount + 1)/2].daysInTop100        
-    print "Average days in top 100 = " + avgDaysInTop100.__str__()
-    print "Median days in top 100 = " + medianDaysInTop100.__str__()
-
-    avgPrice = sum(ebook.price for ebook in bestsellers[:bestsellersCountHalf]) / bestsellersCountHalf
-    print "Average price of the 50 youngest ebooks = €" + avgPrice.__str__()
-    avgPrice = sum(ebook.price for ebook in bestsellers[bestsellersCountHalf:]) / bestsellersCountHalf
-    print "Average price of the 50 oldest ebooks = €" + avgPrice.__str__()
-
     bestsellers.sort(cmp=None, key=lambda ebook : ebook.rank, reverse=False)
     avgDaysInTop100 = sum(ebook.daysInTop100 for ebook in bestsellers[:bestsellersCountHalf]) / bestsellersCountHalf
     print "Average days in top 100 of the 50 highest ranked= " + avgDaysInTop100.__str__()
@@ -159,7 +128,44 @@ def main():
     print "Average price of the 50 highest ranked ebooks = €" + avgPrice.__str__()
     avgPrice = sum(ebook.price for ebook in bestsellers[bestsellersCountHalf:]) / bestsellersCountHalf
     print "Average price of the 50 lowest ranked ebooks = €" + avgPrice.__str__()
-        
+
+    bestsellers.sort(cmp=None, key=lambda ebook : ebook.price, reverse=False)
+    avgPrice = sum(ebook.price for ebook in bestsellers) / bestsellersCount
+    medianPrice = bestsellers[(bestsellersCount + 1)/2].price        
+    print "Average price = €" + avgPrice.__str__()
+    print "Median price = €" + medianPrice.__str__()
+
+    bestsellers.sort(cmp=None, key=lambda ebook : ebook.daysInTop100, reverse=False)
+    avgDaysInTop100 = sum(ebook.daysInTop100 for ebook in bestsellers) / bestsellersCount
+    medianDaysInTop100 = bestsellers[(bestsellersCount + 1)/2].daysInTop100        
+    print "Average days in top 100 = " + avgDaysInTop100.__str__()
+    print "Median days in top 100 = " + medianDaysInTop100.__str__()
+
+    avgPrice = sum(ebook.price for ebook in bestsellers[:bestsellersCountHalf]) / bestsellersCountHalf
+    print "Average price of the 50 youngest ebooks = €" + avgPrice.__str__()
+    avgPrice = sum(ebook.price for ebook in bestsellers[bestsellersCountHalf:]) / bestsellersCountHalf
+    print "Average price of the 50 oldest ebooks = €" + avgPrice.__str__()
+
+# Average number of reviews
+# Average rating
+    ratedBestsellers = [ebook for ebook in bestsellers if isinstance(ebook.rating, float)]
+    ratedBestsellersCount = len(ratedBestsellers)
+    ratedBestsellersCountHalf = ratedBestsellersCount / 2
+    print "Percentage of top 100 books with at least one review = %" + (float(ratedBestsellersCount)/float(bestsellersCount)*100.0).__str__()
+    avgRating = sum(ebook.rating for ebook in ratedBestsellers) / ratedBestsellersCount
+    print "Average rating = " + avgRating.__str__()
+    avgRating = sum(ebook.rating for ebook in ratedBestsellers[:ratedBestsellersCountHalf]) / ratedBestsellersCountHalf
+    print "Average rating of the 50 youngest ebooks = " + avgRating.__str__()
+    avgRating = sum(ebook.rating for ebook in ratedBestsellers[ratedBestsellersCountHalf:]) / ratedBestsellersCountHalf
+    print "Average rating of the 50 oldest ebooks = " + avgRating.__str__()
+    avgReviewsCount = sum(ebook.nbReviews for ebook in ratedBestsellers) / ratedBestsellersCount
+    print "Average reviews count = " + avgReviewsCount.__str__()
+    avgReviewsCount = sum(ebook.nbReviews for ebook in ratedBestsellers[:ratedBestsellersCountHalf]) / ratedBestsellersCountHalf
+    print "Average reviews count of the 50 youngest ebooks = " + avgReviewsCount.__str__()
+    avgReviewsCount = sum(ebook.nbReviews for ebook in ratedBestsellers[ratedBestsellersCountHalf:]) / ratedBestsellersCountHalf
+    print "Average reviews count of the 50 oldest ebooks = " + avgReviewsCount.__str__()
+
+
     csvFile.close()
     
 if __name__ == "__main__":
